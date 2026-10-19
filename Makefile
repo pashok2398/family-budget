@@ -1,5 +1,6 @@
 .PHONY: install test build run deploy deploy-quick fetch-isracard isracard-login hapoalim-login install-fetcher fetcher-status fetcher-logs
 install:
+	git config core.hooksPath .githooks
 	python3 -m venv .venv
 	.venv/bin/pip install -e '.[test]'
 	cd frontend && npm install

@@ -8,7 +8,7 @@
 - `fetcher` (family-budget-fetcher): started by systemd `deploy/family-budget-fetcher.service` with TPM-sealed
   credentials. `make fetch-isracard`, `make fetcher-status`, `make fetcher-logs`.
 
-Deploy code changes with `make deploy-quick` (rebuilds image, waits for healthy). `make deploy` also runs all tests.
+First setup: `make install` (venv, npm packages, docs-check git hook). Deploy code changes with `make deploy-quick` (rebuilds image, waits for healthy). `make deploy` also runs all tests.
 
 ## Live data
 

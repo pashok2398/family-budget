@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Blocks a commit that changes documented code without touching its doc.
+# Skip deliberately with a commit message trailer:  Docs-Skip: <why no doc change is needed>
+set -euo pipefail
+
+msg_file="$1"
+grep -qiE '^Docs-Skip: *[^ ]' "$msg_file" && exit 0
+
+staged=$(git diff --cached --name-only --diff-filter=ACMRD)
+
+# code path regex -> doc that describes it
+rules=(
+  '^backend/family_budget/(ingestion|parsers)/|docs/ingestion.md'
+  '^backend/family_budget/classification/|docs/classification.md'
+  '^(compose\.yaml|Makefile|Dockerfile|deploy/|fetcher/|scripts/)|docs/operations.md'
+  '^backend/family_budget/(models\.py|migrations/versions/|periods\.py|reporting/|budgeting/|reconciliation/)|docs/ARCHITECTURE.md'
+  '^backend/family_budget/(api/|cli\.py)|README.md'
+)
+
+missing=()
+for rule in "${rules[@]}"; do
+  pattern=${rule%|*}
+  doc=${rule##*|}
+  if grep -qE "$pattern" <<<"$staged" && ! grep -qxF "$doc" <<<"$staged"; then
+    missing+=("$doc  (changed: $(grep -E "$pattern" <<<"$staged" | head -3 | tr '\n' ' '))")
+  fi
+done
+
+if ((${#missing[@]})); then
+  echo "commit-msg: documented code changed but its doc did not:" >&2
+  printf '  - %s\n' "${missing[@]}" >&2
+  echo "Update the doc(s) and stage them, or add a trailer:  Docs-Skip: <reason>" >&2
+  exit 1
+fi

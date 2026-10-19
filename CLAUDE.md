@@ -39,6 +39,18 @@ Load only the doc that matches the task:
 
 User-facing docs: `README.md` (setup, import contract, API, CLI) and `GUIDE.md` (end-user walkthrough).
 
+## Keeping docs current
+
+Docs are part of the change, not a follow-up. In the same commit as a code change:
+
+- New feature, changed behavior, new setting, or a lesson learned from a bug: update the matching `docs/` file.
+- New doc topic: add a small file in `docs/` and link it in "Read before working on" above.
+- User-visible change: also update `GUIDE.md` (end user) or `README.md` (API, CLI, setup).
+- A doc that contradicts the code is a bug: fix it when you notice it.
+
+The `commit-msg` hook (`.githooks/`) enforces the code → doc mapping. When no doc change is truly needed, say why
+with a `Docs-Skip: <reason>` trailer instead of updating a doc for the sake of it.
+
 ## Hard rules
 
 - Never commit real financial data, names, employers, card numbers or LAN addresses. Tests and seed use synthetic data.

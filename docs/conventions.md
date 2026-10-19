@@ -24,3 +24,17 @@ names, employers, local businesses, card last-four digits, references or LAN add
 ## Git
 
 Branch `main`. Commit messages: imperative subject, body explains why.
+
+`.githooks/commit-msg` (enabled by `make install` via `git config core.hooksPath .githooks`) rejects a commit that
+changes mapped code without staging its doc:
+
+| Code | Doc |
+|---|---|
+| `ingestion/`, `parsers/` | `docs/ingestion.md` |
+| `classification/` | `docs/classification.md` |
+| compose, Makefile, Dockerfile, `deploy/`, `fetcher/`, `scripts/` | `docs/operations.md` |
+| models, migrations, periods, reporting, budgeting, reconciliation | `docs/ARCHITECTURE.md` |
+| `api/`, `cli.py` | `README.md` |
+
+Add a row in the hook's `rules` array when a new doc covers a new area. Bypass only with a `Docs-Skip: <reason>`
+trailer; never `--no-verify`.
