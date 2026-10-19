@@ -49,21 +49,38 @@ def test_backup_rejects_changed_source(tmp_path):
         backup(source, tmp_path / "out.fbb", "test passphrase long")
 
 
-def test_cli_reads_passphrase_from_stdin(tmp_path, monkeypatch):
+def test_cli_plain_archive_streams_through_a_pipe_only(tmp_path, monkeypatch, capsys):
     import io
     import sys
     from family_budget import cli
 
     source = tmp_path / "source"
-    fixture_database(source)
-    target = tmp_path / "out" / "backup.fbb"
-    target.parent.mkdir()
-    password = "a long test passphrase 123"
-    for argv in (
-        ["family-budget", "--data-dir", str(source), "backup", str(target), "--passphrase-stdin"],
-        ["family-budget", "restore", str(target), str(tmp_path / "restored"), "--passphrase-stdin"],
-    ):
-        monkeypatch.setattr(sys, "argv", argv)
-        monkeypatch.setattr(sys, "stdin", io.StringIO(password + "\n"))
+    sha = fixture_database(source)
+
+    class Pipe(io.BytesIO):
+        def isatty(self):
+            return False
+
+    out = Pipe()
+    monkeypatch.setattr(sys, "argv", ["family-budget", "--data-dir", str(source), "backup", "-", "--plain"])
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(out))
+    cli.main()
+    sys.stdout.flush()
+    plain = out.getvalue()
+    assert plain[:2] == b"PK"
+    monkeypatch.setattr(sys, "argv", ["family-budget", "restore", "-", str(tmp_path / "restored"), "--plain"])
+    monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(plain)))
+    cli.main()
+    assert (tmp_path / "restored" / "imports" / f"{sha}.csv").exists()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["family-budget", "--data-dir", str(source), "backup", str(tmp_path / "x.zip"), "--plain"],
+    )
+    with pytest.raises(SystemExit):
         cli.main()
-    assert (tmp_path / "restored" / "budget.sqlite3").exists()
+    assert not (tmp_path / "x.zip").exists()
+    with pytest.raises(ValueError, match="Invalid backup archive"):
+        from family_budget.backup import restore_archive
+
+        restore_archive(b"not a zip", tmp_path / "bad")

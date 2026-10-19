@@ -74,14 +74,15 @@ section.
 
 ## 8. Backups
 
-```bash
-sudo make backup-setup       # passphrase → sealed; installs the nightly 03:30 encrypted backup
-make backup-now
-```
+Backups are encrypted to your SSH (or age) public key; only your private key opens them.
 
-Off-site copy (optional): install `age` and `rclone`, configure an rclone remote, then
-`cp deploy/family-budget-backup.env.example /etc/family-budget-backup.env`, set the remote and your public key,
-`chmod 600` it.
+```bash
+sudo dnf install age rclone && rclone config          # rclone only for an off-site copy (e.g. Google Drive)
+sudo cp deploy/family-budget-backup.env.example /etc/family-budget-backup.env
+sudo chmod 600 /etc/family-budget-backup.env           # set BACKUP_AGE_RECIPIENT, optionally BACKUP_REMOTE
+sudo make install-backup                               # nightly 03:30 timer
+sudo make backup-now
+```
 
 See [operations.md](operations.md#backups).
 

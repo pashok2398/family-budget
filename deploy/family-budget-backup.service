@@ -1,9 +1,8 @@
-# Nightly encrypted backup of what cannot be recreated: the ledger DB, original statements and receipts
-# (family-budget backup). Bank logins, fetcher state and the inbox are left out on purpose: re-login restores
-# them. The passphrase sealed by scripts/backup-setup.sh is decrypted into this unit's private credentials
-# directory and piped to the CLI. Archives land in <data dir>/backups, one per run, kept KEEP_DAYS days.
-# With /etc/family-budget-backup.env (see family-budget-backup.env.example) each archive is also age-encrypted
-# to the owner's public key and uploaded with rclone.
+# Nightly backup of what cannot be recreated: the ledger DB, original statements and receipts. Bank logins,
+# fetcher state and the inbox are left out on purpose: logging in again restores them. Each archive is
+# encrypted with age to the owner's public key (only their private key opens it), kept in <data dir>/backups
+# and, with BACKUP_REMOTE set, copied off-site with rclone. Settings: /etc/family-budget-backup.env
+# (see family-budget-backup.env.example).
 [Unit]
 Description=Family budget encrypted backup
 Requires=docker.service
@@ -12,7 +11,6 @@ After=docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=__REPO__
-LoadCredentialEncrypted=backup-passphrase:/etc/credstore.encrypted/family-budget-backup.cred
 Environment=KEEP_DAYS=30
-EnvironmentFile=-/etc/family-budget-backup.env
+EnvironmentFile=/etc/family-budget-backup.env
 ExecStart=__REPO__/deploy/backup-run.sh

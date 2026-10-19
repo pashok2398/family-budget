@@ -37,18 +37,26 @@ container; then hand the command to the user. Note `cp -i` exits 1 on "n" and st
 What is backed up: only what cannot be recreated, the DB, `imports/` (original statements) and receipts.
 Not backed up on purpose: bank logins, fetcher state, inbox, `.env` (re-login / `.env.example` restore them).
 
-- One-time: `sudo make backup-setup` asks for a passphrase, seals it with systemd-creds (TPM2 + host key) in
-  `/etc/credstore.encrypted/family-budget-backup.cred`, installs `family-budget-backup.{service,timer}`.
-  Keep the passphrase in a password manager too: the sealed copy only decrypts on this machine.
-- Nightly 03:30 (`deploy/backup-run.sh`): `family-budget backup --passphrase-stdin` into
-  `/srv/family-budget/backups/budget-<timestamp>.fbb`, then a test restore into the container's tmpfs, then
-  archives older than `KEEP_DAYS` (30) are deleted.
+Encryption is public-key only (`age`): the host holds the owner's public key, never a secret, and only the
+owner's private key (e.g. `~/.ssh/id_ed25519`) can open an archive.
+
+- Config: `/etc/family-budget-backup.env` (from `deploy/family-budget-backup.env.example`, mode 600):
+  `BACKUP_AGE_RECIPIENT` (ssh-ed25519 or age1 public key), optional `BACKUP_REMOTE` (here
+  `gdrive:Backups/family-budget`) and `RCLONE_CONFIG`. Needs `age` and `rclone` on the host.
+- Install: `make install-backup` (as root) installs and enables `family-budget-backup.{service,timer}`.
+- Nightly 03:30 (`deploy/backup-run.sh`): `family-budget backup - --plain` streams the unencrypted zip out of the
+  container through a pipe into `age` (plaintext never touches a file) and, via a FIFO, into a test restore in the
+  container's tmpfs. The archive `<data dir>/backups/budget-<timestamp>.zip.age` is kept only if that restore
+  passes. Then upload with rclone (MD5-verified) and prune local and remote copies after `KEEP_DAYS` (30).
 - `make backup-now` runs one immediately, `make backup-status` shows the timer, last result and archives.
-- Off-site: with `/etc/family-budget-backup.env` (from `deploy/family-budget-backup.env.example`, mode 600) each
-  verified archive is encrypted again with `age` to the owner's SSH/age public key, uploaded with rclone to
-  `BACKUP_REMOTE` (here `gdrive:Backups/family-budget`, rclone config in `/root/.config/rclone`), and pruned there
-  after `KEEP_DAYS` too. Needs `age` and `rclone` on the host.
-- Restore from Drive: `rclone copy gdrive:Backups/family-budget/<file>.fbb.age .`, then
-  `age -d -i ~/.ssh/id_ed25519 <file>.fbb.age > <file>.fbb` on the machine holding the private key, then the
-  normal restore with the backup passphrase.
-- Restore: README "Encrypted backup and restore".
+- Restore (on the machine with the private key):
+
+  ```bash
+  rclone copy gdrive:Backups/family-budget/<file>.zip.age .
+  age -d -i ~/.ssh/id_ed25519 <file>.zip.age | family-budget restore - /empty/dir --plain
+  ```
+
+  In Docker: pipe into `docker compose exec -T budget family-budget restore - /tmp/restored --plain`, or restore
+  with a local install. Then point `FAMILY_BUDGET_HOST_DATA` at the restored directory (README "Encrypted backup
+  and restore" for switching the live service).
+- The manual `family-budget backup <file>.fbb` (passphrase, AES-GCM) still exists for one-off archives.

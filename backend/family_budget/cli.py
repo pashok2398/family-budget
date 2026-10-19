@@ -45,8 +45,10 @@ def main():
     restore.add_argument("archive", type=Path)
     restore.add_argument("destination", type=Path)
     for sub in (backup, restore):
-        # For the scheduled backup: systemd pipes the sealed passphrase in, so it is never an argument or a file.
-        sub.add_argument("--passphrase-stdin", action="store_true", help="Read the passphrase from stdin")
+        # For the scheduled backup: the unencrypted archive goes through a pipe into age, never into a file.
+        sub.add_argument(
+            "--plain", action="store_true", help="Unencrypted archive on stdout / from stdin ('-')"
+        )
     args = parser.parse_args()
     if args.data_dir:
         os.environ["FAMILY_BUDGET_DATA_DIR"] = args.data_dir
@@ -65,14 +67,21 @@ def main():
         )
         return
     if args.command in {"backup", "restore"}:
-        from .backup import backup, restore
+        from .backup import archive, backup, restore, restore_archive
 
-        if args.passphrase_stdin:
-            password = sys.stdin.readline().rstrip("\n")
-        else:
-            password = getpass.getpass("Backup passphrase (12+ characters): ")
+        if args.plain:
+            stream = Path("-") == (args.destination if args.command == "backup" else args.archive)
+            if not stream or (args.command == "backup" and sys.stdout.isatty()):
+                parser.error("--plain only streams through a pipe: use '-'")
+            if args.command == "backup":
+                sys.stdout.buffer.write(archive(root))
+            else:
+                restore_archive(sys.stdin.buffer.read(), args.destination.expanduser().resolve())
+                print("Completed", file=sys.stderr)
+            return
+        password = getpass.getpass("Backup passphrase (12+ characters): ")
         if args.command == "backup":
-            if not args.passphrase_stdin and password != getpass.getpass("Repeat passphrase: "):
+            if password != getpass.getpass("Repeat passphrase: "):
                 parser.error("Passphrases differ")
             backup(root, args.destination.expanduser().resolve(), password)
         else:

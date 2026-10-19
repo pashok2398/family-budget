@@ -24,12 +24,11 @@ def key(password, salt):
     return Scrypt(salt=salt, length=32, n=2**15, r=8, p=1).derive(password.encode())
 
 
-def backup(root: Path, destination: Path, password: str):
-    destination = require_external(destination)
+def archive(root: Path) -> bytes:
+    """The verified, unencrypted backup zip. Callers encrypt it: backup() with a passphrase, or the scheduled
+    backup by piping it into age, so plaintext never reaches a file."""
     if not (root / "budget.sqlite3").exists():
         raise ValueError("Database not initialized")
-    if destination.exists():
-        raise ValueError("Backup destination already exists")
     with tempfile.TemporaryDirectory() as temp:
         snapshot = Path(temp) / "budget.sqlite3"
         # Freeze app writers while the separate read connection creates its WAL-aware snapshot.
@@ -70,11 +69,19 @@ def backup(root: Path, destination: Path, password: str):
             for name, data in files.items():
                 archive.writestr(name, data)
             archive.writestr("manifest.json", json.dumps(manifest))
-        salt, nonce = os.urandom(16), os.urandom(12)
-        ciphertext = AESGCM(key(password, salt)).encrypt(nonce, buffer.getvalue(), MAGIC)
-        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "wb") as out:
-            out.write(MAGIC + salt + nonce + ciphertext)
+        return buffer.getvalue()
+
+
+def backup(root: Path, destination: Path, password: str):
+    destination = require_external(destination)
+    if destination.exists():
+        raise ValueError("Backup destination already exists")
+    plain = archive(root)
+    salt, nonce = os.urandom(16), os.urandom(12)
+    ciphertext = AESGCM(key(password, salt)).encrypt(nonce, plain, MAGIC)
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as out:
+        out.write(MAGIC + salt + nonce + ciphertext)
 
 
 def restore(archive_path: Path, destination: Path, password: str):
@@ -90,7 +97,21 @@ def restore(archive_path: Path, destination: Path, password: str):
         plain = AESGCM(key(password, encrypted[8:24])).decrypt(encrypted[24:36], encrypted[36:], MAGIC)
     except Exception:
         raise ValueError("Wrong passphrase or damaged backup") from None
-    with zipfile.ZipFile(io.BytesIO(plain)) as archive:
+    restore_archive(plain, destination)
+
+
+def restore_archive(plain: bytes, destination: Path):
+    """Validate an unencrypted backup zip completely, then install it into an empty directory."""
+    destination = require_external(destination)
+    if destination.exists() and any(destination.iterdir()):
+        raise ValueError("Restore requires an empty directory; stop the service first")
+    if len(plain) > MAX_BACKUP:
+        raise ValueError("Backup exceeds size limit")
+    try:
+        opened = zipfile.ZipFile(io.BytesIO(plain))
+    except zipfile.BadZipFile:
+        raise ValueError("Invalid backup archive") from None
+    with opened as archive:
         infos = archive.infolist()
         if sum(i.file_size for i in infos) > MAX_BACKUP or len({i.filename for i in infos}) != len(infos):
             raise ValueError("Invalid backup archive")

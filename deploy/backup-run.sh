@@ -1,28 +1,40 @@
-#!/bin/sh
-# Started by family-budget-backup.service. Writes one encrypted archive into /data/backups, proves it decrypts
-# by restoring it into the container's tmpfs, then removes archives older than KEEP_DAYS.
-set -eu
+#!/usr/bin/env bash
+# Started by family-budget-backup.service. Streams the unencrypted backup archive out of the app container
+# straight into age (BACKUP_AGE_RECIPIENT: the owner's ssh-ed25519 or age1 public key), so plaintext never
+# reaches a file. The same bytes are test-restored in the container's tmpfs; the archive is kept only if that
+# restore passes. Then: copy to BACKUP_REMOTE with rclone (optional) and prune both sides after KEEP_DAYS.
+set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-pass="${CREDENTIALS_DIRECTORY:?start through systemd}/backup-passphrase"
-name="budget-$(date +%Y%m%d-%H%M%S).fbb"
-app() { /usr/bin/docker compose --project-directory "$repo" exec -T budget "$@"; }
+: "${BACKUP_AGE_RECIPIENT:?set in /etc/family-budget-backup.env}"
+keep=${KEEP_DAYS:-30}
+compose() { /usr/bin/docker compose --project-directory "$repo" "$@"; }
+app() { compose exec -T budget "$@"; }
 
-app mkdir -p -m 700 /data/backups
-app family-budget backup "/data/backups/$name" --passphrase-stdin < "$pass"
+data=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' \
+  "$(compose ps -q budget)")
+dir="$data/backups"
+install -d -m 700 "$dir"
+name="budget-$(date +%Y%m%d-%H%M%S).zip.age"
+partial="$dir/.$name.partial"
+work=$(mktemp -d -p /run)
 check=$(app mktemp -d)
-app family-budget restore "/data/backups/$name" "$check/restored" --passphrase-stdin < "$pass" >/dev/null
-app rm -rf "$check"
-app find /data/backups -name 'budget-*.fbb' -mtime "+${KEEP_DAYS:-30}" -print -delete
+trap 'rm -f "$partial"; rm -rf "$work"; app rm -rf "$check"' EXIT
+mkfifo "$work/check"
 
-# Off-site: encrypt again to the owner's public key (only their private key opens it), upload, verify, prune.
+app family-budget restore - "$check/restored" --plain < "$work/check" 2>/dev/null &
+restore=$!
+app family-budget backup - --plain | tee "$work/check" | age -r "$BACKUP_AGE_RECIPIENT" > "$partial"
+restored=0
+wait "$restore" || restored=$?
+[ "$restored" -eq 0 ] || { echo "test restore failed; archive discarded" >&2; exit 1; }
+chmod 600 "$partial"
+mv "$partial" "$dir/$name"
+find "$dir" -maxdepth 1 -name 'budget-*.age' -mtime "+$keep" -print -delete
+
 if [ -n "${BACKUP_REMOTE:-}" ]; then
-  : "${BACKUP_AGE_RECIPIENT:?set in /etc/family-budget-backup.env}"
-  staged=$(mktemp -p /run "$name.age.XXXXXX")
-  trap 'rm -f "$staged"' EXIT
-  app cat "/data/backups/$name" | age -r "$BACKUP_AGE_RECIPIENT" > "$staged"
-  rclone copyto "$staged" "$BACKUP_REMOTE/$name.age"  # verifies the uploaded MD5
-  rclone lsf "$BACKUP_REMOTE/$name.age" | grep -q . || { echo "upload not found on $BACKUP_REMOTE" >&2; exit 1; }
-  rclone delete "$BACKUP_REMOTE" --min-age "${KEEP_DAYS:-30}d" --include 'budget-*.fbb.age'
-  echo "uploaded: $BACKUP_REMOTE/$name.age"
+  rclone copyto "$dir/$name" "$BACKUP_REMOTE/$name"  # verifies the uploaded MD5
+  rclone lsf "$BACKUP_REMOTE/$name" | grep -q . || { echo "upload not found on $BACKUP_REMOTE" >&2; exit 1; }
+  rclone delete "$BACKUP_REMOTE" --min-age "${keep}d" --include 'budget-*.age'
+  echo "uploaded: $BACKUP_REMOTE/$name"
 fi
-echo "backup ok: $name ($(app du -h "/data/backups/$name" | cut -f1))"
+echo "backup ok: $dir/$name ($(du -h "$dir/$name" | cut -f1))"

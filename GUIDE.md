@@ -264,7 +264,7 @@ Expand **פירוט תשלומים — קרן וריבית**, paste the ID of a 
 
 ## 10. Backup and restore
 
-With Docker, run `sudo make backup-setup` once: it stores the passphrase sealed to this machine and backs up every night at 03:30, keeping 30 days (`make backup-status`, `make backup-now`). With `/etc/family-budget-backup.env` set up, each archive is also encrypted to your SSH key and uploaded to Google Drive (see `docs/operations.md`). The manual commands below are for a one-off backup.
+With Docker, the scheduled backup (`sudo make install-backup`, setup in `docs/setup.md`) runs every night at 03:30, encrypted to your SSH public key so only your private key can open it, and keeps 30 days (`make backup-status`, `make backup-now`). With `/etc/family-budget-backup.env` set up, each archive is also encrypted to your SSH key and uploaded to Google Drive (see `docs/operations.md`). The manual commands below are for a one-off backup.
 
 For a local Python installation, run these from the project directory. They use the same data-directory environment setting as the app:
 
