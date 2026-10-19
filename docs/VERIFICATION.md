@@ -1,5 +1,9 @@
 # Verification record
 
+Current status (2026-10-19): full backend suite (76 tests), Vitest (7) and `tsc --noEmit` pass with all dependencies
+installed; Docker build and deploy run via `make deploy-quick`; fetcher JSON and Isracard web XLSX imported against
+real statements. The record below is the original implementation-time log, kept for history.
+
 Environment: Python 3.14.2, Node 22.22.0. Application supports Python 3.12+; Docker targets Python 3.12.
 
 Run during implementation:
