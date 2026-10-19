@@ -6,6 +6,8 @@ A local-first Israeli household finance MVP: FastAPI, SQLAlchemy 2, SQLite/WAL, 
 
 **Status:** implemented MVP source, synthetic fixtures and automated tests. One native layout is validated: the Isracard website **XLSX** transaction export (`isracard_web_xlsx_v1`, see below). Native Hapoalim layouts and Isracard PDFs are **not validated**. The adapters otherwise support an explicit user mapping and the canonical interchange format below. Unknown native PDF layouts fail clearly. Do not assume compatibility from a bank's name. See [verification status](docs/VERIFICATION.md) for checks actually run in the implementation environment.
 
+Setting up a new host: follow [docs/setup.md](docs/setup.md).
+
 ## Quick start: local Python + Node
 
 Python 3.12+ and Node 22.12+ are required. Package installation needs internet access once; running the application does not.

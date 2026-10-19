@@ -30,6 +30,7 @@ make deploy-quick                          # rebuild + restart the budget contai
 
 Load only the doc that matches the task:
 
+- Fresh install, first run, fetcher setup: [docs/setup.md](docs/setup.md)
 - Ledger model, money, invariants: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Imports, duplicates, charge dates, card bills: [docs/ingestion.md](docs/ingestion.md)
 - Categories, rules, review queue: [docs/classification.md](docs/classification.md)
