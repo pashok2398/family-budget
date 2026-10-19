@@ -34,7 +34,7 @@ Load only the doc that matches the task:
 - Ledger model, money, invariants: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Imports, duplicates, charge dates, card bills: [docs/ingestion.md](docs/ingestion.md)
 - Categories, rules, review queue: [docs/classification.md](docs/classification.md)
-- Deploy, live data, DB inspection, data fixes: [docs/operations.md](docs/operations.md)
+- Deploy, live data, DB inspection, data fixes, backups: [docs/operations.md](docs/operations.md)
 - Code style, tests, privacy rules: [docs/conventions.md](docs/conventions.md)
 - What was verified against real samples: [docs/VERIFICATION.md](docs/VERIFICATION.md)
 
