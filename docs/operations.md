@@ -8,7 +8,9 @@
 - `fetcher` (family-budget-fetcher): started by systemd `deploy/family-budget-fetcher.service` with TPM-sealed
   credentials. `make fetch-isracard`, `make fetcher-status`, `make fetcher-logs`.
 
-First setup: `make install` (venv, npm packages, docs-check git hook). Deploy code changes with `make deploy-quick` (rebuilds image, waits for healthy). `make deploy` also runs all tests.
+The app runs only in Docker; the Makefile has no local run/build. `make install` sets up the dev toolchain (venv,
+npm packages, docs-check git hook) used by `make test` (pytest, vitest, tsc). `make deploy` = test + `deploy-quick`
+(rebuilds the image, waits for healthy). `make logs` shows the app container's recent output.
 
 ## Live data
 

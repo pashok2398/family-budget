@@ -1,4 +1,5 @@
-.PHONY: install test build run deploy deploy-quick fetch-isracard isracard-login hapoalim-login install-fetcher fetcher-status fetcher-logs
+# The app runs only in Docker (compose.yaml). install/test are the dev toolchain for tests before a deploy.
+.PHONY: install test deploy deploy-quick logs fetch-isracard isracard-login hapoalim-login install-fetcher fetcher-status fetcher-logs
 install:
 	git config core.hooksPath .githooks
 	python3 -m venv .venv
@@ -7,11 +8,7 @@ install:
 test:
 	.venv/bin/python -c "import fastapi, sqlalchemy, alembic, pandas, openpyxl, pymupdf, pdfplumber, cryptography"
 	.venv/bin/pytest
-	cd frontend && npm test
-build:
-	cd frontend && npm run build
-run:
-	.venv/bin/family-budget serve
+	cd frontend && npm test && npx tsc --noEmit -p .
 deploy: test deploy-quick
 deploy-quick:
 	docker compose up --build -d
@@ -19,6 +16,8 @@ deploy-quick:
 	  s=$$(docker inspect -f '{{.State.Health.Status}}' $$id); \
 	  [ "$$s" = healthy ] && echo "deployed: healthy" && exit 0; sleep 2; \
 	done; echo "container not healthy: $$s"; docker compose logs --tail 30 budget; exit 1
+logs:
+	docker compose logs --tail 50 budget
 fetch-isracard:
 	@docker exec family-budget-fetcher node -e "fetch('http://127.0.0.1:8080/run',{method:'POST'}).then(r=>r.text()).then(console.log)" \
 	  || echo "fetcher is not running: sudo make isracard-login / hapoalim-login (first time) or systemctl start family-budget-fetcher"
