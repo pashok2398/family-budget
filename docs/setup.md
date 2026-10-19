@@ -72,7 +72,16 @@ Hapoalim asks for an SMS code on the first login: start it with **משוך עכ�
 Fetched files appear in ייבוא דוח; nothing reaches the ledger until you commit a preview. Details: README, fetcher
 section.
 
-## 8. First import
+## 8. Backups
+
+```bash
+sudo make backup-setup       # passphrase → sealed; installs the nightly 03:30 encrypted backup
+make backup-now
+```
+
+See [operations.md](operations.md#backups).
+
+## 9. First import
 
 Prefer the Isracard website XLSX for history (it has exact off-cycle charge dates, see
 [ingestion.md](ingestion.md)), then let the fetcher keep it current. Walkthrough for the user: `GUIDE.md`.

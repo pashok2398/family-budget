@@ -34,4 +34,15 @@ container; then hand the command to the user. Note `cp -i` exits 1 on "n" and st
 
 ## Backups
 
-Encrypted backup/restore via CLI, see README "Encrypted backup and restore".
+What is backed up: only what cannot be recreated, the DB, `imports/` (original statements) and receipts.
+Not backed up on purpose: bank logins, fetcher state, inbox, `.env` (re-login / `.env.example` restore them).
+
+- One-time: `sudo make backup-setup` asks for a passphrase, seals it with systemd-creds (TPM2 + host key) in
+  `/etc/credstore.encrypted/family-budget-backup.cred`, installs `family-budget-backup.{service,timer}`.
+  Keep the passphrase in a password manager too: the sealed copy only decrypts on this machine.
+- Nightly 03:30 (`deploy/backup-run.sh`): `family-budget backup --passphrase-stdin` into
+  `/srv/family-budget/backups/budget-<timestamp>.fbb`, then a test restore into the container's tmpfs, then
+  archives older than `KEEP_DAYS` (30) are deleted.
+- `make backup-now` runs one immediately, `make backup-status` shows the timer, last result and archives.
+- Archives sit on the same disk: copy them off-machine to survive a disk failure.
+- Restore: README "Encrypted backup and restore".

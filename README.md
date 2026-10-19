@@ -207,7 +207,7 @@ Use `family-budget --data-dir /absolute/path ...` to select another store. Revie
 
 ## Encrypted backup and restore
 
-Backups use an online SQLite backup (WAL-safe), include all registered original documents, verify their SHA-256 hashes, and encrypt the archive with AES-256-GCM and a random salt/nonce. Scrypt derives a key from an interactively entered passphrase. Passphrases are never command arguments, stored settings, or log messages. The MVP backup limit is 1 GiB. Backups themselves must live outside the Git checkout.
+Backups use an online SQLite backup (WAL-safe), include all registered original documents, verify their SHA-256 hashes, and encrypt the archive with AES-256-GCM and a random salt/nonce. Scrypt derives a key from an interactively entered passphrase, or one piped in with `--passphrase-stdin` (used by the scheduled backup, see [docs/operations.md](docs/operations.md#backups)). Passphrases are never command arguments, stored settings, or log messages. The MVP backup limit is 1 GiB. Backups themselves must live outside the Git checkout.
 
 ```bash
 family-budget backup /private/backups/household-2026-10.fbb

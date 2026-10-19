@@ -47,3 +47,23 @@ def test_backup_rejects_changed_source(tmp_path):
     (source / "imports" / f"{sha}.csv").write_bytes(b"Changed")
     with pytest.raises(ValueError, match="checksum"):
         backup(source, tmp_path / "out.fbb", "test passphrase long")
+
+
+def test_cli_reads_passphrase_from_stdin(tmp_path, monkeypatch):
+    import io
+    import sys
+    from family_budget import cli
+
+    source = tmp_path / "source"
+    fixture_database(source)
+    target = tmp_path / "out" / "backup.fbb"
+    target.parent.mkdir()
+    password = "a long test passphrase 123"
+    for argv in (
+        ["family-budget", "--data-dir", str(source), "backup", str(target), "--passphrase-stdin"],
+        ["family-budget", "restore", str(target), str(tmp_path / "restored"), "--passphrase-stdin"],
+    ):
+        monkeypatch.setattr(sys, "argv", argv)
+        monkeypatch.setattr(sys, "stdin", io.StringIO(password + "\n"))
+        cli.main()
+    assert (tmp_path / "restored" / "budget.sqlite3").exists()

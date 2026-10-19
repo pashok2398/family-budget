@@ -1,0 +1,15 @@
+# Nightly encrypted backup of what cannot be recreated: the ledger DB, original statements and receipts
+# (family-budget backup). Bank logins, fetcher state and the inbox are left out on purpose: re-login restores
+# them. The passphrase sealed by scripts/backup-setup.sh is decrypted into this unit's private credentials
+# directory and piped to the CLI. Archives land in <data dir>/backups, one per run, kept KEEP_DAYS days.
+[Unit]
+Description=Family budget encrypted backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO__
+LoadCredentialEncrypted=backup-passphrase:/etc/credstore.encrypted/family-budget-backup.cred
+Environment=KEEP_DAYS=30
+ExecStart=__REPO__/deploy/backup-run.sh
