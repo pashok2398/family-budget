@@ -43,7 +43,7 @@ export FAMILY_BUDGET_HOST_DATA=/srv/family-budget
 docker compose up --build -d
 ```
 
-Open http://127.0.0.1:8000. The bind directory holds the database and original statements; removing the container does not remove the data. Never use a directory inside the Git checkout. Do not expose the port publicly: this MVP is a **single trusted local household workspace**, without multi-user authentication. For remote access, use an authenticated private tunnel/VPN and an appropriately configured trusted origin; remote deployment is outside the current default configuration.
+Open http://127.0.0.1:8000. The bind directory holds the database and original statements; removing the container does not remove the data. Never use a directory inside the Git checkout. Do not expose the port publicly: this MVP is a **single trusted local household workspace**, protected by one shared login at the gateway (HTTP basic auth, `sudo make web-password`), without per-user accounts. Over plain HTTP the password crosses the LAN unencrypted on each request. For remote access, use an authenticated private tunnel/VPN and an appropriately configured trusted origin; remote deployment is outside the current default configuration.
 
 ## First review
 

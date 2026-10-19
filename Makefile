@@ -1,5 +1,5 @@
 # The app runs only in Docker (compose.yaml). install/test are the dev toolchain for tests before a deploy.
-.PHONY: install test deploy deploy-quick logs install-backup backup-now backup-status fetch-isracard isracard-login hapoalim-login install-fetcher fetcher-status fetcher-logs
+.PHONY: install test deploy deploy-quick logs web-password install-backup backup-now backup-status fetch-isracard isracard-login hapoalim-login install-fetcher fetcher-status fetcher-logs
 install:
 	git config core.hooksPath .githooks
 	python3 -m venv .venv
@@ -11,11 +11,14 @@ test:
 	cd frontend && npm test && npx tsc --noEmit -p .
 deploy: test deploy-quick
 deploy-quick:
+	@f=$${FAMILY_BUDGET_HTPASSWD:-/etc/family-budget/htpasswd}; [ -f "$$f" ] || { echo "no web login at $$f: sudo make web-password"; exit 1; }
 	docker compose up --build -d
 	@id=$$(docker compose ps -q budget); for i in $$(seq 1 30); do \
 	  s=$$(docker inspect -f '{{.State.Health.Status}}' $$id); \
 	  [ "$$s" = healthy ] && echo "deployed: healthy" && exit 0; sleep 2; \
 	done; echo "container not healthy: $$s"; docker compose logs --tail 30 budget; exit 1
+web-password:
+	@bash scripts/web-password.sh
 logs:
 	docker compose logs --tail 50 budget
 fetch-isracard:
@@ -24,7 +27,9 @@ fetch-isracard:
 fetcher-status:
 	@systemctl --no-pager --lines=0 status family-budget-fetcher || true
 	@docker exec family-budget-fetcher node -e "fetch('http://127.0.0.1:8080/status').then(r=>r.text()).then(console.log)" 2>/dev/null || true
-fetcher-logs:
+fetcher-web-password:
+	@bash scripts/web-password.sh
+logs:
 	journalctl -u family-budget-fetcher -n 50 --no-pager
 install-fetcher:
 	@ls /etc/credstore.encrypted/family-budget-*.cred >/dev/null 2>&1 || { echo "no sealed login: sudo make isracard-login or sudo make hapoalim-login"; exit 1; }

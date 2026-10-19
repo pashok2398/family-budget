@@ -3,7 +3,10 @@
 ## Containers (compose.yaml)
 
 - `budget` (fin-budget-1): the app. Data bind `/srv/family-budget` → `/data`, inbox `/srv/family-budget-inbox` → `/inbox`.
-- `gateway`: nginx, the only service published on the LAN (`FAMILY_BUDGET_BIND` in `.env`).
+- `gateway`: nginx, the only service published on the LAN (`FAMILY_BUDGET_BIND` in `.env`). HTTP basic auth on
+  everything: hash in `/etc/family-budget/htpasswd` (root:101, 640; override `FAMILY_BUDGET_HTPASSWD`), set or
+  changed with `sudo make web-password` (also recreates the gateway). `deploy-quick` refuses to run without it.
+  API calls from scripts need `-u user:password` plus the `X-Family-Budget: local` header.
 - `egress`: proxy allowing HTTPS to bank domains only (`deploy/egress/allowed-domains`).
 - `fetcher` (family-budget-fetcher): started by systemd `deploy/family-budget-fetcher.service` with TPM-sealed
   credentials. `make fetch-isracard`, `make fetcher-status`, `make fetcher-logs`.

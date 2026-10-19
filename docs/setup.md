@@ -33,8 +33,13 @@ cp .env.example .env
 ```
 
 Set `FAMILY_BUDGET_HOST_DATA=/srv/family-budget`. For LAN access set `FAMILY_BUDGET_BIND` and
-`FAMILY_BUDGET_ALLOWED_HOSTS` to the host's LAN IP; leave unset for loopback only. There is no login: anyone who can
-reach the port has full access.
+`FAMILY_BUDGET_ALLOWED_HOSTS` to the host's LAN IP; leave unset for loopback only.
+
+Set the web login (one shared household user, HTTP basic auth at the gateway; deploy refuses to start without it):
+
+```bash
+sudo make web-password
+```
 
 ## 4. Your household baseline (before the first start)
 
