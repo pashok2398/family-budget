@@ -1,0 +1,97 @@
+# Networks: the app and the fetcher sit only on "internal", which has no route to the internet.
+# gateway is the only container published on the LAN; egress is the only way out, and it allows HTTPS to
+# the bank domains only (deploy/egress/allowed-domains).
+services:
+  gateway:
+    image: nginxinc/nginx-unprivileged:1.27.5-alpine
+    ports:
+      - "${FAMILY_BUDGET_BIND:-127.0.0.1}:8000:8000"
+    volumes:
+      - ./deploy/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [internal, lan]
+    depends_on: [budget]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    pids_limit: 50
+  egress:
+    build: ./deploy/egress
+    networks: [internal, outside]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    pids_limit: 50
+  budget:
+    build: .
+    networks: [internal]
+    volumes:
+      - "${FAMILY_BUDGET_HOST_DATA:?Set an absolute data directory outside this repository}:/data"
+      - "${FAMILY_BUDGET_INBOX:-/srv/family-budget-inbox}:/inbox:ro"
+    environment:
+      FAMILY_BUDGET_DATA_DIR: /data
+      FAMILY_BUDGET_INBOX: /inbox
+      FAMILY_BUDGET_FETCHER_URL: http://family-budget-fetcher:8080
+      FAMILY_BUDGET_ALLOWED_HOSTS: "${FAMILY_BUDGET_ALLOWED_HOSTS:-}"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1536m
+    cpus: 2
+    pids_limit: 100
+  fetcher:
+    # Started by systemd (deploy/family-budget-fetcher.service), which decrypts the TPM-sealed credentials
+    # and pipes them to stdin; never started by "docker compose up". Writes JSON files for the import
+    # preview, never the ledger. Its port is not published: only the app reaches it on this network.
+    build: ./fetcher
+    profiles: ["fetch"]
+    networks:
+      internal:
+        ipv4_address: 172.31.80.10  # the only address the egress proxy accepts
+    depends_on: [egress]
+    user: "10002:10001"
+    hostname: family-budget-fetcher  # stable, so Chromium accepts its own profile lock across runs
+    volumes:
+      - "${FAMILY_BUDGET_INBOX:-/srv/family-budget-inbox}:/out"
+      # Bank Hapoalim browser profile (cookies that let the bank recognise this device) and the
+      # scheduled-run switch; owned by the fetcher user only (make install-fetcher).
+      - "${FAMILY_BUDGET_FETCHER_STATE:-/srv/family-budget-fetcher-state}:/state"
+    environment:
+      FETCH_MONTHS_BACK: "${FETCH_MONTHS_BACK:-1}"
+      FETCH_AT: "${FETCH_AT:-06:00}"
+      FETCH_PROXY: http://egress:8888
+    read_only: true
+    tmpfs:
+      - /tmp:size=512M,mode=1777
+    shm_size: 512m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    pids_limit: 300
+networks:
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.80.0/24
+          ip_range: 172.31.80.128/25  # dynamic addresses stay away from the fetcher's fixed one
+  lan: {}
+  outside: {}

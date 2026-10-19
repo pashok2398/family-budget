@@ -1,0 +1,5 @@
+transaction_date,posting_date,merchant,description,amount,currency,reference,kind
+2026-10-01,2026-10-01,Acme Industries,Anonymized household salary,20000.00,ILS,bank-salary-001,income
+2026-10-02,2026-10-02,Globex Systems,Anonymized partner salary,12000.00,ILS,bank-salary-002,income
+2026-10-10,2026-10-10,Card payment,Anonymized card settlement,-600.00,ILS,bank-card-001,card_settlement
+2026-10-12,2026-10-12,Example Credit,Anonymized loan debit,-1100.00,ILS,bank-loan-001,loan_payment

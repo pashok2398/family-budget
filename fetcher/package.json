@@ -1,0 +1,10 @@
+{
+  "name": "family-budget-fetcher",
+  "private": true,
+  "type": "module",
+  "description": "Fetches card transactions with israeli-bank-scrapers into JSON files for the import preview",
+  "engines": { "node": ">=22.22.2" },
+  "dependencies": {
+    "israeli-bank-scrapers": "6.12.2"
+  }
+}

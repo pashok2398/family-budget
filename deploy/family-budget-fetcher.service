@@ -1,0 +1,23 @@
+# Daily Isracard / Bank Hapoalim fetcher. Each login is sealed with systemd-creds (TPM2 + host key) in
+# /etc/credstore.encrypted/family-budget-<source>.cred; systemd decrypts them into this unit's private,
+# non-swappable credentials directory and they are piped to the container's stdin as one JSON object
+# {"<source>": login, ...}, so they are never written to a file the container or the app can see.
+# make install-fetcher adds one LoadCredentialEncrypted line per sealed login in a drop-in
+# (family-budget-fetcher.service.d/credentials.conf).
+[Unit]
+Description=Family budget Isracard and bank fetcher
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+WorkingDirectory=__REPO__
+ExecStartPre=-/usr/bin/docker rm -f family-budget-fetcher
+ExecStart=__REPO__/deploy/fetcher-start.sh
+ExecStop=/usr/bin/docker stop family-budget-fetcher
+Restart=on-failure
+RestartSec=5min
+
+[Install]
+WantedBy=multi-user.target

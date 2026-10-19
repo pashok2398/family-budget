@@ -1,0 +1,15 @@
+.git
+.agents
+.aws
+.codex
+.venv
+**/node_modules
+**/__pycache__
+frontend/dist
+*.sqlite*
+*.db*
+*.fbb
+.env*
+data
+imports
+backups
