@@ -44,5 +44,11 @@ Not backed up on purpose: bank logins, fetcher state, inbox, `.env` (re-login / 
   `/srv/family-budget/backups/budget-<timestamp>.fbb`, then a test restore into the container's tmpfs, then
   archives older than `KEEP_DAYS` (30) are deleted.
 - `make backup-now` runs one immediately, `make backup-status` shows the timer, last result and archives.
-- Archives sit on the same disk: copy them off-machine to survive a disk failure.
+- Off-site: with `/etc/family-budget-backup.env` (from `deploy/family-budget-backup.env.example`, mode 600) each
+  verified archive is encrypted again with `age` to the owner's SSH/age public key, uploaded with rclone to
+  `BACKUP_REMOTE` (here `gdrive:Backups/family-budget`, rclone config in `/root/.config/rclone`), and pruned there
+  after `KEEP_DAYS` too. Needs `age` and `rclone` on the host.
+- Restore from Drive: `rclone copy gdrive:Backups/family-budget/<file>.fbb.age .`, then
+  `age -d -i ~/.ssh/id_ed25519 <file>.fbb.age > <file>.fbb` on the machine holding the private key, then the
+  normal restore with the backup passphrase.
 - Restore: README "Encrypted backup and restore".

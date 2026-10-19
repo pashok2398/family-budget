@@ -79,6 +79,10 @@ sudo make backup-setup       # passphrase → sealed; installs the nightly 03:30
 make backup-now
 ```
 
+Off-site copy (optional): install `age` and `rclone`, configure an rclone remote, then
+`cp deploy/family-budget-backup.env.example /etc/family-budget-backup.env`, set the remote and your public key,
+`chmod 600` it.
+
 See [operations.md](operations.md#backups).
 
 ## 9. First import
